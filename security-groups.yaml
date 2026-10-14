@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Security groups for the Computer Store ECS project.
+
+Parameters:
+  VPCId:
+    Type: AWS::EC2::VPC::Id
+    
+Resources:
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS EC2 instances.
+      VpcId: !Ref VPCId
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS database.
+      VpcId: !Ref VPCId
