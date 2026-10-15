@@ -23,6 +23,10 @@ Parameters:
     Default: 10.0.12.0/24
     Description: CIDR block for the private subnet B.
 
+  ECSSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group attached to the ECS EC2 instances.
+
 Resources: 
   ComputerStoreVPC:
     Type: AWS::EC2::VPC
@@ -135,6 +139,22 @@ Resources:
     Properties:
       Roles: 
         - !Ref ECSInstanceRole
+
+  ECSLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: ComputerStoreECSLaunchTemplate
+      LaunchTemplateData:
+        InstanceType: t3.small
+        IamInstanceProfile: 
+          Name: !Ref ECSInstanceProfile
+        ImageId: "{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id}}"
+        SecurityGroupIds:
+          - !Ref ECSSecurityGroupId
+        UserData: 
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            echo ECS_CLUSTER=${ComputerStoreECSCluster} >> /etc/ecs/ecs.config
 
 Outputs:
   VPCId:
