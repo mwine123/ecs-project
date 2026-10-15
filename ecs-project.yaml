@@ -177,15 +177,31 @@ Resources:
       LaunchTemplateName: ComputerStoreECSLaunchTemplate
       LaunchTemplateData:
         InstanceType: t3.small
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            DeviceIndex: 0
+            Groups:
+              - !Ref ECSSecurityGroup
         IamInstanceProfile: 
           Name: !Ref ECSInstanceProfile
         ImageId: "{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id}}"
-        SecurityGroupIds:
-          - !Ref ECSSecurityGroup
         UserData: 
           Fn::Base64: !Sub |
             #!/bin/bash
             echo ECS_CLUSTER=${ComputerStoreECSCluster} >> /etc/ecs/ecs.config
+
+  ComputerStoreASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ECSLaunchTemplate
+        Version: !GetAtt ECSLaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      DesiredCapacity: 1
+      MaxSize: 2
 
   ComputerStoreRDSSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
