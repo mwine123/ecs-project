@@ -22,10 +22,10 @@ Parameters:
     Type: String
     Default: 10.0.12.0/24
     Description: CIDR block for the private subnet B.
-
-  ECSSecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
-    Description: Security group attached to the ECS EC2 instances.
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: Password for the RDS database.
 
 Resources: 
   ComputerStoreVPC:
@@ -118,6 +118,37 @@ Resources:
       SubnetId: !Ref PrivateSubnetB
       RouteTableId: !Ref PrivateRouteTable
 
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS EC2 instances.
+      VpcId: !Ref ComputerStoreVPC
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS database.
+      VpcId: !Ref ComputerStoreVPC
+
+  RDSIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RDSSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  IngressRuleForHTTP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ECSSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 154.162.22.134/32
+
+
   ComputerStoreECSCluster:
     Type: AWS::ECS::Cluster
   
@@ -150,11 +181,37 @@ Resources:
           Name: !Ref ECSInstanceProfile
         ImageId: "{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id}}"
         SecurityGroupIds:
-          - !Ref ECSSecurityGroupId
+          - !Ref ECSSecurityGroup
         UserData: 
           Fn::Base64: !Sub |
             #!/bin/bash
             echo ECS_CLUSTER=${ComputerStoreECSCluster} >> /etc/ecs/ecs.config
+
+  ComputerStoreRDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS database.
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+
+  ComputerStoreRDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: computer-store-db
+      AllocatedStorage: 20
+      DBInstanceClass: db.t4g.micro
+      Engine: mysql
+      EngineVersion: 8.4.11
+      MasterUsername: admin
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      DBSubnetGroupName: !Ref ComputerStoreRDSSubnetGroup
+      MultiAZ: false
+      PubliclyAccessible: false
+      StorageType: gp3
+    DeletionPolicy: Snapshot
 
 Outputs:
   VPCId:
