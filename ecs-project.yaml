@@ -148,6 +148,45 @@ Resources:
       ToPort: 80
       CidrIp: 154.162.22.134/32
 
+  EFSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for EFS.
+      VpcId: !Ref ComputerStoreVPC
+
+  EFSMountIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EFSSecurityGroup
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  ComputerStoreEFS:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      FileSystemTags:
+        - Key: Name
+          Value: ComputerStoreEFS
+
+  ComputerStoreEFSMountTargetA:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref ComputerStoreEFS
+      SubnetId: !Ref PrivateSubnetA
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+
+  ComputerStoreEFSMountTargetB:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref ComputerStoreEFS
+      SubnetId: !Ref PrivateSubnetB
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
 
   ComputerStoreECSCluster:
     Type: AWS::ECS::Cluster
