@@ -123,45 +123,37 @@ Resources:
     Properties:
       GroupDescription: Security group for ECS EC2 instances.
       VpcId: !Ref ComputerStoreVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
 
   RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for RDS database.
       VpcId: !Ref ComputerStoreVPC
-
-  RDSIngressRule:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref RDSSecurityGroup
-      IpProtocol: tcp
-      FromPort: 3306
-      ToPort: 3306
-      SourceSecurityGroupId: !Ref ECSSecurityGroup
-
-  IngressRuleForHTTP:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref ECSSecurityGroup
-      IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
-      CidrIp: 154.162.22.134/32
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
 
   EFSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for EFS.
       VpcId: !Ref ComputerStoreVPC
-
-  EFSMountIngressRule:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref EFSSecurityGroup
-      IpProtocol: tcp
-      FromPort: 2049
-      ToPort: 2049
-      SourceSecurityGroupId: !Ref ECSSecurityGroup
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
 
   ComputerStoreEFS:
     Type: AWS::EFS::FileSystem
@@ -223,7 +215,7 @@ Resources:
               - !Ref ECSSecurityGroup
         IamInstanceProfile: 
           Name: !Ref ECSInstanceProfile
-        ImageId: "{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id}}"
+        ImageId: ami-07d4544a1fdee86a1
         UserData: 
           Fn::Base64: !Sub |
             #!/bin/bash
@@ -267,6 +259,121 @@ Resources:
       PubliclyAccessible: false
       StorageType: gp3
     DeletionPolicy: Snapshot
+
+  ECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/computer-store-logs
+      RetentionInDays: 7
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  PhpMyAdminTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: phpmyadmin-task
+      NetworkMode: bridge
+      RequiresCompatibilities:
+        - EC2
+      Cpu: 224
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: phpmyadmin
+          Essential: true
+          Memory: 195
+          Image: phpmyadmin/phpmyadmin:latest
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+          Environment:
+            - Name: PMA_HOST
+              Value: !GetAtt ComputerStoreRDSInstance.Endpoint.Address
+            - Name: PMA_PORT
+              Value: "3306"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ECSLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: phpmyadmin
+
+  PhpMyAdminService:
+    Type: AWS::ECS::Service
+    Properties:
+      AvailabilityZoneRebalancing: DISABLED
+      Cluster: !Ref ComputerStoreECSCluster
+      DesiredCount: 1
+      TaskDefinition: !Ref PhpMyAdminTaskDefinition
+      LaunchType: EC2
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+
+  MetabaseTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn: 
+      - ComputerStoreEFS
+      - ComputerStoreEFSMountTargetA
+      - ComputerStoreEFSMountTargetB
+    Properties:
+      Family: metabase-task
+      NetworkMode: bridge
+      RequiresCompatibilities:
+        - EC2
+      Cpu: 799
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: metabase
+          Essential: true
+          Memory: 1331
+          Image: metabase/metabase:latest
+          PortMappings:
+            - ContainerPort: 3000
+              HostPort: 3000
+          Environment:
+            - Name: MB_DB_FILE
+              Value: /metabase-data/metabase.db
+            - Name: JAVA_TOOL_OPTIONS
+              Value: "-XX:MaxRAMPercentage=75.0"
+          MountPoints:
+            - ContainerPath: /metabase-data
+              SourceVolume: metabase-data
+              ReadOnly: false
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ECSLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: metabase
+      Volumes: 
+        - Name: metabase-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref ComputerStoreEFS
+            TransitEncryption: ENABLED
+            RootDirectory: "/"
+
+  MetabaseService:
+    Type: AWS::ECS::Service
+    Properties:
+      AvailabilityZoneRebalancing: DISABLED
+      Cluster: !Ref ComputerStoreECSCluster
+      DesiredCount: 1
+      TaskDefinition: !Ref MetabaseTaskDefinition
+      LaunchType: EC2
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
 
 Outputs:
   VPCId:
