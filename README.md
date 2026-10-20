@@ -164,11 +164,19 @@ here.
 
 ### ECS services and tasks
 
-![ECS services and tasks](images/ecs-services.png)
+![ECS services and tasks](images/ecs-cluster.png)
 
-### CloudWatch Logs
+### CloudFormation stack
 
-![CloudWatch Logs](docs/screenshots/cloudwatch-logs.png)
+![CloudFormation 1](images/cloudformation-stack-1.png)
+
+![CloudFormation 2](images/cloudformation-stack-2.png)
+
+![CloudFormation 3](images/cloudformation-stack-3.png)
+
+![CloudFormation 4](images/cloudformation-stack-4.png)
+
+![CloudFormation 5](images/cloudformation-stack-5.png)
 
 ## What I learned
 
