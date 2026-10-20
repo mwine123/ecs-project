@@ -242,7 +242,7 @@ The script is designed to support the following operations:
 Run the Python script from the project directory:
 
 ```bash
-python3 <script-name>.py
+python3 script.py
 ```
 
 When prompted, enter the operation you want to perform: `validate`, `create`, `update`, or `delete`.
