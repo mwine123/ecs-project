@@ -12,7 +12,7 @@ creating each resource manually, then get both applications running and
 understand how the resources connect.
 
 ![Architecture
-diagram](https://cloudisfree.com/projects/project-3/part-1/images/infrastructure.png)
+diagram](images/architecture-diagram)
 
 The diagram is the original project reference. The details below
 describe my implementation.
