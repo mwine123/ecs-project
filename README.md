@@ -1,4 +1,4 @@
-# Somputer-Store-ECS-Cloudformation
+# Computer-Store-ECS-Cloudformation
 
 A Computer Store environment deployed using AWS CloudFormation. This
 project is an opportunity for me to learn more about AWS and get
@@ -35,8 +35,10 @@ of one and a maximum of two instances. The launch template uses a
 `t3.small` instance and configures the instance to register with my ECS
 cluster.
 
-The two containers run on the ECS cluster: - phpMyAdmin uses host port
-`80`. - Metabase uses host port `3000`.
+The two containers run on the ECS cluster:
+
+- phpMyAdmin uses host port `80`.
+- Metabase uses host port `3000`.
 
 I used fixed host ports because I wanted to access each application
 through the EC2 instance's public IP address. The services use
@@ -210,7 +212,7 @@ here.
 
 ## Deployment
 
-This project includes a Python automation script designed to manage the CloudFormation stack through a single interactive entry point. Instead of running separate AWS CLI commands for each operation, users can select the action they want to perform, and the script will handle the corresponding CloudFormation operation.
+This project includes a Bash script (`script.sh`) to manage the CloudFormation stack. The script accepts a command-line argument to determine which operation to perform: validate, create, update, or delete.
 
 ### Prerequisites
 
@@ -218,40 +220,66 @@ Before running the script, ensure you have:
 
 - An AWS account with the required permissions to manage the project's resources.
 - AWS CLI installed and configured with valid credentials.
-- Python 3 installed.
-- The required Python dependencies installed, if applicable.
-- The CloudFormation template available in the repository.
+- Bash installed.
+- The CloudFormation template (`ecs-project.yaml`) available in the project directory.
 
 ### Available Operations
 
-The script is designed to support the following operations:
-
-| Operation | Description |
+| Command | Description |
 |---|---|
-| Validate | Checks the CloudFormation template for errors before deployment. |
-| Create | Creates the CloudFormation stack and provisions the defined resources. |
-| Update | Updates an existing stack to reflect changes made to the template. |
-| Delete | Deletes the CloudFormation stack and its associated resources, subject to CloudFormation deletion rules. |
+| `validate` | Validates the CloudFormation template. |
+| `create` | Validates the template and creates the ECS infrastructure stack. Prompts for the database password. |
+| `update` | Validates the template and updates the existing stack while preserving the current database password. |
+| `delete` | Deletes the CloudFormation stack and waits for the deletion operation to finish. |
 
 ### Running the Script
 
-Run the Python script from the project directory:
+Make the script executable:
 
 ```bash
-python3 script.py
+chmod +x script.sh
 ```
 
-When prompted, enter the operation you want to perform: `validate`, `create`, `update`, or `delete`.
+Run the desired operation from the project directory.
 
-The script will use your selection to execute the corresponding CloudFormation operation.
+**Validate the template**
+
+```bash
+./script.sh validate
+```
+
+**Create the stack**
+
+```bash
+./script.sh create
+```
+
+The script prompts for the database password without displaying the input.
+
+**Update the stack**
+
+```bash
+./script.sh update
+```
+
+The update operation preserves the existing database password.
+
+**Delete the stack**
+
+```bash
+./script.sh delete
+```
+
+The script waits for CloudFormation to finish deleting the stack.
 
 ### Important Notes
 
-- Ensure your AWS credentials and default region are configured correctly before running the script.
-- Validate the template before creating or updating the stack.
-- Review any changes before applying an update, especially when they may replace existing resources.
-- Deleting the stack may permanently remove resources and data. Back up any important data and review resource retention policies before proceeding.
-- Some resources may require additional cleanup depending on their configuration and CloudFormation deletion behavior.
+- Ensure your AWS credentials and region are configured correctly. This script uses `us-east-1`.
+- Template validation does not guarantee that every resource will deploy successfully.
+- Review infrastructure changes before applying updates, especially when resources may be replaced.
+- Deleting the stack may permanently remove resources and data. Back up important data before proceeding.
+- The RDS instance uses a snapshot deletion policy, so a database snapshot may remain after stack deletion and continue to incur storage charges.
+- Never commit database passwords or other secrets to the repository.
 
 ## Reference
 
