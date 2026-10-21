@@ -73,6 +73,18 @@ file-based application database on EFS. I would consider using a
 dedicated external application database, such as PostgreSQL, for a
 production deployment.
 
+I configured two environment variables for the Metabase container:
+
+- `MB_DB_FILE` sets the path to the file-based application database on 
+EFS at `/metabase-data/metabase.db`.
+- `JAVA_TOOL_OPTIONS` uses `-XX:MaxRAMPercentage=75.0` to allow the JVM 
+to use up to 75% of the memory available to it for its heap.
+
+I added the JVM setting while troubleshooting Metabase's memory issues. 
+The container's memory limit and the JVM heap setting work together, so I 
+would continue monitoring memory usage rather than assume the current values 
+are optimal for every workload.
+
 ### Security groups
 
 The ECS security group allows inbound traffic on ports `80` and `3000`.
@@ -148,9 +160,6 @@ and that `FileSystemId` was not allowed. I corrected the property name
 to `FilesystemId` and validated the template before deploying again.
 
 ## Screenshots
-
-I will add screenshots of the working applications and AWS resources
-here.
 
 ### phpMyAdmin
 

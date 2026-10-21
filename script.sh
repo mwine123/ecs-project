@@ -30,7 +30,6 @@ elif [ "$command" = "create" ]; then
         --no-cli-pager || exit 1
 
     read -r -s -p "Enter database password: " DB_PASSWORD
-    echo
 
     echo "Creating CloudFormation stack..."
 
