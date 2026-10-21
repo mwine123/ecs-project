@@ -11,11 +11,7 @@ The goal was to build the infrastructure from a template instead of
 creating each resource manually, then get both applications running and
 understand how the resources connect.
 
-![Architecture
-diagram](images/architecture-diagram)
-
-The diagram is the original project reference. The details below
-describe my implementation.
+![Architecture diagram](images/architecture-diagram.png)
 
 ## Architecture decisions
 
